@@ -19,7 +19,11 @@ let contract: ethers.Contract | null = null;
 
 function getProvider(): ethers.JsonRpcProvider {
   if (!provider) {
-    provider = new ethers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL);
+    const rpcUrl = process.env.ETHEREUM_RPC_URL || process.env.NEXT_PUBLIC_RPC_URL || 'https://sepolia.era.zksync.dev';
+    provider = new ethers.JsonRpcProvider(rpcUrl, {
+      chainId: 300,
+      name: 'zkSync-sepolia'
+    });
   }
   return provider;
 }
@@ -27,7 +31,11 @@ function getProvider(): ethers.JsonRpcProvider {
 function getWallet(): ethers.Wallet {
   if (!wallet) {
     const prov = getProvider();
-    wallet = new ethers.Wallet(process.env.ETHEREUM_PRIVATE_KEY!, prov);
+    const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('ETHEREUM_PRIVATE_KEY not found in environment variables');
+    }
+    wallet = new ethers.Wallet(privateKey, prov);
   }
   return wallet;
 }
@@ -38,6 +46,12 @@ function getContract(): ethers.Contract {
     contract = new ethers.Contract(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!, CONTRACT_ABI, w);
   }
   return contract;
+}
+
+// Read-only contract for verification (doesn't need private key)
+function getReadOnlyContract(): ethers.Contract {
+  const provider = getProvider();
+  return new ethers.Contract(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!, CONTRACT_ABI, provider);
 }
 
 // Convert file hash string to bytes32
@@ -104,7 +118,7 @@ export async function verifyDocumentOnChain(documentHash: string): Promise<{
   documentType: string;
 } | null> {
   try {
-    const c = getContract();
+    const c = getReadOnlyContract(); // Use read-only contract
     const bytes32Hash = hashToBytes32(documentHash);
 
     const [exists, revoked, graduateId, timestamp, documentType] = await c.verifyDocument(bytes32Hash);

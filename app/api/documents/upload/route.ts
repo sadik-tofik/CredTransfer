@@ -114,6 +114,14 @@ export async function POST(request: NextRequest) {
     // Store hash on blockchain
     const blockchainResult = await storeDocumentHash(fileHash, graduate.student_id, document_type);
 
+    if (!blockchainResult.success) {
+      console.error('Blockchain storage failed:', blockchainResult.error);
+      return NextResponse.json({
+        success: false,
+        error: `Failed to store document hash on blockchain: ${blockchainResult.error}`,
+      }, { status: 500 });
+    }
+
     // Generate QR code
     const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?hash=${fileHash}`;
     const qrCodeDataUrl = await generateQRCodeData(verifyUrl);
@@ -128,9 +136,9 @@ export async function POST(request: NextRequest) {
         file_path: filePath,
         file_size: file.size,
         file_hash: fileHash,
-        blockchain_tx_hash: blockchainResult.txHash || null,
-        blockchain_block: blockchainResult.blockNumber || null,
-        blockchain_timestamp: blockchainResult.success ? new Date().toISOString() : null,
+        blockchain_tx_hash: blockchainResult.txHash,
+        blockchain_block: blockchainResult.blockNumber,
+        blockchain_timestamp: new Date().toISOString(),
         status: 'active',
         uploaded_by: user.id,
       })

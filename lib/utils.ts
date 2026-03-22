@@ -97,10 +97,11 @@ export function validateStudentId(id: string): boolean {
   return /^JU\/\d{4}\/\d{2,4}$/.test(id);
 }
 
-// Generate Etherscan link
+// Generate blockchain explorer link
 export function getEtherscanLink(txHash: string, network = 'sepolia'): string {
-  if (network === 'sepolia') {
-    return `https://sepolia.etherscan.io/tx/${txHash}`;
+  if (network === 'sepolia' || network === 'zkSync Sepolia') {
+    // Use zkSync Sepolia explorer for zkSync transactions
+    return `https://sepolia.explorer.zksync.io/tx/${txHash}`;
   }
   return `https://etherscan.io/tx/${txHash}`;
 }

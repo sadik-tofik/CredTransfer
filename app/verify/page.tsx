@@ -236,7 +236,7 @@ export default function VerifyPage() {
                       ⛓️ Blockchain Proof
                     </h3>
                     <div className="bg-black/30 rounded-lg p-4 space-y-3">
-                      <InfoRow label="Network" value={result.blockchain.network?.toUpperCase() || 'SEPOLIA'} badge />
+                      <InfoRow label="Network" value={result.blockchain.network || 'zkSync Sepolia'} badge />
                       {result.blockchain.tx_hash && (
                         <div className="flex items-center justify-between">
                           <span className="text-white/50 text-sm">Transaction Hash</span>

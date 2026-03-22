@@ -242,7 +242,7 @@ export async function GET(
         tx_hash: document.blockchain_tx_hash,
         block_number: document.blockchain_block,
         timestamp: blockchainData.timestamp,
-        network: 'sepolia',
+        network: 'zkSync Sepolia',
         graduate_id: blockchainData.graduateId,
         document_type: blockchainData.documentType,
       } : null,

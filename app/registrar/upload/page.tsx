@@ -449,7 +449,7 @@ export default function RegistrarUploadPage() {
                 </div>
                 <p className="text-white/50 text-xs mb-1">Transaction Hash</p>
                 <a
-                  href={`https://sepolia.etherscan.io/tx/${uploadResult.blockchain_tx_hash}`}
+                  href={`https://sepolia.explorer.zksync.io/tx/${uploadResult.blockchain_tx_hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 text-sm break-all"
