@@ -59,7 +59,7 @@ CredTransfer revolutionizes academic credential verification by leveraging block
          └───────────────────────┼───────────────────────┘
                                  │
                     ┌─────────────────┐
-                    │   Telebirr Payment │
+                    │   Chapa Payment │
                     │   Gateway       │
                     └─────────────────┘
 ```
