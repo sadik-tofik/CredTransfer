@@ -73,10 +73,18 @@ export const documentUploadSchema = z.object({
 });
 
 export const transferRequestSchema = z.object({
-  document_id: z.string().uuid('Invalid document ID'),
-  recipient_institution: z.string().min(2, 'Institution name is required').max(255),
-  recipient_email: z.string().email('Invalid email').optional().or(z.literal('')),
-  payment_method: z.enum(['telebirr', 'bank_transfer', 'cbe_birr']),
+  document_id: z.string().min(1, 'Please select a document'),
+  recipient_institution: z.string().min(2, 'Institution name must be at least 2 characters').max(255, 'Institution name is too long'),
+  recipient_email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  payment_method: z.enum(['telebirr', 'bank_transfer', 'cbe_birr']).refine((val) => ['telebirr', 'bank_transfer', 'cbe_birr'].includes(val), {
+    message: 'Please select a payment method'
+  }),
+}).refine((data) => {
+  // Additional validation to ensure recipient_institution is not just whitespace
+  return data.recipient_institution && data.recipient_institution.trim().length > 0;
+}, {
+  message: 'Institution name is required',
+  path: ['recipient_institution']
 });
 
 export const paymentInitiateSchema = z.object({

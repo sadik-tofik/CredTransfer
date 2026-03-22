@@ -7,6 +7,45 @@ import { transferRequestSchema } from '@/lib/validations';
 // POST: Create transfer request
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json();
+    
+    console.log('=== API REQUEST DEBUG ===');
+    console.log('Raw request body:', body);
+    console.log('Body type:', typeof body);
+    console.log('Body keys:', Object.keys(body));
+    console.log('recipient_institution value:', body.recipient_institution);
+    console.log('recipient_institution type:', typeof body.recipient_institution);
+    console.log('========================');
+    
+    // Defensive: ensure body is an object
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid request format' 
+      }, { status: 400 });
+    }
+    
+    // Defensive: ensure required fields exist and are strings
+    const sanitizedBody = {
+      document_id: typeof body.document_id === 'string' ? body.document_id.trim() : '',
+      recipient_institution: typeof body.recipient_institution === 'string' ? body.recipient_institution.trim() : '',
+      recipient_email: typeof body.recipient_email === 'string' ? body.recipient_email.trim() : '',
+      payment_method: body.payment_method
+    };
+    
+    console.log('Sanitized body:', sanitizedBody);
+    
+    // Validate first before checking auth
+    const validation = transferRequestSchema.safeParse(sanitizedBody);
+    if (!validation.success) {
+      console.log('Validation failed:', validation.error.issues);
+      return NextResponse.json({ 
+        success: false, 
+        error: validation.error.issues[0].message,
+        details: validation.error.issues 
+      }, { status: 400 });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
@@ -23,12 +62,6 @@ export async function POST(request: NextRequest) {
 
     if (userData?.role !== 'graduate') {
       return NextResponse.json({ success: false, error: 'Only graduates can request transfers' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const validation = transferRequestSchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });
     }
 
     const { document_id, recipient_institution, recipient_email, payment_method } = validation.data;

@@ -73,6 +73,12 @@ export default function GraduateSharePage() {
 
   const selectedDocId = watch('document_id');
   const paymentMethod = watch('payment_method');
+  const recipientInstitution = watch('recipient_institution');
+  
+  // Debug: Watch the recipient_institution field
+  useEffect(() => {
+    console.log('recipient_institution changed:', recipientInstitution);
+  }, [recipientInstitution]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -97,11 +103,44 @@ export default function GraduateSharePage() {
 
   const onSubmit = async (data: ShareFormData) => {
     setIsSubmitting(true);
+    
+    // Get the actual form values directly from the form as a fallback
+    const formElement = document.querySelector('form') as HTMLFormElement;
+    const formData = new FormData(formElement);
+    const institutionValue = formData.get('recipient_institution') as string;
+    
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    console.log('React Hook Form data:', data);
+    console.log('FormData value:', institutionValue);
+    console.log('Form field types:', {
+      document_id: typeof data.document_id,
+      recipient_institution: typeof data.recipient_institution,
+      recipient_email: typeof data.recipient_email,
+      payment_method: typeof data.payment_method
+    });
+    console.log('==============================');
+    
+    // Use FormData value if React Hook Form value is undefined
+    const finalInstitution = data.recipient_institution || institutionValue || '';
+    
+    if (!finalInstitution || finalInstitution.trim() === '') {
+      toast.error('Institution name is required');
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
-      const response = await axios.post('/api/transfers/request', {
-        ...data,
+      const requestData = {
+        document_id: data.document_id,
+        recipient_institution: finalInstitution.trim(),
+        recipient_email: data.recipient_email || '',
+        payment_method: data.payment_method,
         amount: SERVICE_FEE,
-      });
+      };
+      
+      console.log('Request data being sent:', requestData);
+      
+      const response = await axios.post('/api/transfers/request', requestData);
       
       setShareResult(response.data.data);
       
@@ -112,7 +151,9 @@ export default function GraduateSharePage() {
         setStep('payment');
       }
     } catch (error) {
-      const err = error as { response?: { data?: { error?: string } } };
+      const err = error as { response?: { data?: { error?: string; details?: any } } };
+      console.error('Submit error:', err.response?.data);
+      console.error('Full error:', error);
       toast.error(err.response?.data?.error || 'Failed to create transfer request');
     } finally {
       setIsSubmitting(false);
@@ -231,7 +272,7 @@ export default function GraduateSharePage() {
               <div className="space-y-2">
                 <Label className="text-white/80">Select Document</Label>
                 <Select
-                  value={selectedDocId}
+                  value={selectedDocId ?? ''}
                   onValueChange={(value) => setValue('document_id', value)}
                 >
                   <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -279,9 +320,14 @@ export default function GraduateSharePage() {
                 <div className="space-y-2">
                   <Label className="text-white/80">Institution Name</Label>
                   <Input
-                    {...register('recipient_institution')}
+                    {...register('recipient_institution', { required: true })}
+                    name="recipient_institution"
                     placeholder="e.g. Addis Ababa University"
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                    onChange={(e) => {
+                      console.log('Input changed:', e.target.value);
+                      setValue('recipient_institution', e.target.value);
+                    }}
                   />
                   {errors.recipient_institution && (
                     <p className="text-red-400 text-sm">{errors.recipient_institution.message}</p>

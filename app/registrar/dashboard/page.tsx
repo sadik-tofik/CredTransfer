@@ -45,15 +45,30 @@ export default function RegistrarDashboard() {
     const fetchData = async () => {
       try {
         const [statsRes, docsRes, requestsRes, blockchainRes] = await Promise.allSettled([
+          axios.get('/api/registrar/stats'),
           axios.get('/api/reports/daily'),
-          axios.get('/api/graduates?limit=5'),
           axios.get('/api/transfers/pending?status=pending&limit=5'),
           axios.get('/api/blockchain/status'),
         ]);
 
         if (statsRes.status === 'fulfilled') {
-          setStats(statsRes.value.data.data?.dashboard_stats);
-          setRecentDocs(statsRes.value.data.data?.documents?.slice(0, 5) || []);
+          setStats({
+            total_documents: statsRes.value.data.stats?.totalDocuments || 0,
+            total_graduates: statsRes.value.data.stats?.totalGraduates || 0,
+            pending_requests: statsRes.value.data.stats?.pendingTransfers || 0,
+            total_verifications: statsRes.value.data.stats?.verifiedDocuments || 0,
+            documents_today: 0, // Will be updated from reports
+            revenue_this_month: 0, // Will be updated from reports
+          });
+        }
+        if (docsRes.status === 'fulfilled') {
+          const reportsData = docsRes.value.data.data;
+          setStats(prev => prev ? {
+            ...prev,
+            documents_today: reportsData?.summary?.total_documents || 0,
+            revenue_this_month: reportsData?.summary?.total_revenue || 0,
+          } : null);
+          setRecentDocs(reportsData?.documents?.slice(0, 5) || []);
         }
         if (requestsRes.status === 'fulfilled') {
           setPendingRequests(requestsRes.value.data.data || []);

@@ -12,14 +12,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check user role
+    // Check user role - first try users table, then fallback to metadata
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (!userData || !['registrar', 'admin'].includes(userData.role)) {
+    let userRole = userData?.role;
+    
+    // Fallback to user metadata if users table lookup fails
+    if (!userRole && user.user_metadata?.role) {
+      userRole = user.user_metadata.role;
+    }
+
+    if (!userRole || !['registrar', 'admin'].includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 

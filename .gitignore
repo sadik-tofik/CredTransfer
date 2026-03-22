@@ -39,3 +39,10 @@ next-env.d.ts
 __v0_runtime_loader.js
 __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
+
+# development files
+cookies.txt
+app/api/debug/
+app/api/fix-user-migration/
+app/fix-user/
+scripts/test-*.js

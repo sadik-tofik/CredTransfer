@@ -18,7 +18,14 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!userData || !['registrar', 'admin'].includes(userData.role)) {
+    let userRole = userData?.role;
+    
+    // Fallback to user metadata if users table lookup fails
+    if (!userRole && user.user_metadata?.role) {
+      userRole = user.user_metadata.role;
+    }
+
+    if (!userRole || !['registrar', 'admin'].includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 

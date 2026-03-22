@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateFileHash, generateQRCodeData } from '@/lib/crypto';
 import { storeDocumentHash } from '@/lib/blockchain';
 import { sendDocumentUploadNotification } from '@/lib/email';
+import { uploadDocument } from '@/lib/storage';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -100,17 +101,12 @@ export async function POST(request: NextRequest) {
 
     // Upload file to Supabase Storage
     const fileName = `${graduate.student_id}/${document_type}/${Date.now()}-${file.name}`;
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from('documents')
-      .upload(fileName, fileBuffer, {
-        contentType: file.type,
-        upsert: false,
-      });
+    const { path: filePath, error: uploadError } = await uploadDocument(fileName, fileBuffer, file.type);
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
       return NextResponse.json(
-        { success: false, error: 'Failed to upload file' },
+        { success: false, error: `Failed to upload file: ${uploadError}` },
         { status: 500 }
       );
     }
@@ -129,7 +125,7 @@ export async function POST(request: NextRequest) {
         graduate_id: graduate.id,
         document_type,
         file_name: file.name,
-        file_path: uploadData.path,
+        file_path: filePath,
         file_size: file.size,
         file_hash: fileHash,
         blockchain_tx_hash: blockchainResult.txHash || null,
