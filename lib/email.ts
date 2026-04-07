@@ -160,6 +160,9 @@ export async function sendTransferShareEmail(
       <a href="${verifyUrl}" class="btn">Verify Document Now</a>
     </div>
     <div class="info-box">
+      <strong>Important:</strong> After verification, you will be able to download a verified copy of the document for your records.
+    </div>
+    <div class="info-box">
       <strong>Note:</strong> This document is secured by blockchain technology.
       The verification confirms the document was issued by ${UNIVERSITY} and has not been tampered with.
     </div>`;

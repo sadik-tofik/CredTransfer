@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDate, getDocumentTypeLabel } from '@/lib/utils';
+import { useApiData } from '@/hooks/use-api-data';
+import { useAppStore } from '@/lib/store';
 
 interface DashboardStats {
   total_documents: number;
@@ -35,56 +37,95 @@ interface PendingRequest {
 }
 
 export default function RegistrarDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { setDashboardStats, isGlobalLoading, setGlobalLoading } = useAppStore();
   const [recentDocs, setRecentDocs] = useState<RecentDocument[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [blockchainStatus, setBlockchainStatus] = useState<{ connected: boolean; network?: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Optimized data fetching with caching
+  const { data: statsData, loading: statsLoading, refetch: refetchStats } = useApiData(
+    async () => {
+      const response = await axios.get('/api/registrar/stats');
+      return response.data;
+    },
+    { cacheKey: 'registrar-stats', ttl: 2 * 60 * 1000 } // 2 minutes cache
+  );
+
+  const { data: reportsData, loading: reportsLoading } = useApiData(
+    async () => {
+      const response = await axios.get('/api/reports/daily');
+      return response.data;
+    },
+    { cacheKey: 'reports-daily', ttl: 5 * 60 * 1000 } // 5 minutes cache
+  );
+
+  const { data: transfersData } = useApiData(
+    async () => {
+      const response = await axios.get('/api/transfers/pending?status=pending&limit=5');
+      return response.data;
+    },
+    { cacheKey: 'pending-transfers', ttl: 30 * 1000 } // 30 seconds cache
+  );
+
+  const { data: blockchainData } = useApiData(
+    async () => {
       try {
-        const [statsRes, docsRes, requestsRes, blockchainRes] = await Promise.allSettled([
-          axios.get('/api/registrar/stats'),
-          axios.get('/api/reports/daily'),
-          axios.get('/api/transfers/pending?status=pending&limit=5'),
-          axios.get('/api/blockchain/status'),
-        ]);
-
-        if (statsRes.status === 'fulfilled') {
-          setStats({
-            total_documents: statsRes.value.data.stats?.totalDocuments || 0,
-            total_graduates: statsRes.value.data.stats?.totalGraduates || 0,
-            pending_requests: statsRes.value.data.stats?.pendingTransfers || 0,
-            total_verifications: statsRes.value.data.stats?.verifiedDocuments || 0,
-            documents_today: 0, // Will be updated from reports
-            revenue_this_month: 0, // Will be updated from reports
-          });
-        }
-        if (docsRes.status === 'fulfilled') {
-          const reportsData = docsRes.value.data.data;
-          setStats(prev => prev ? {
-            ...prev,
-            documents_today: reportsData?.summary?.total_documents || 0,
-            revenue_this_month: reportsData?.summary?.total_revenue || 0,
-          } : null);
-          setRecentDocs(reportsData?.documents?.slice(0, 5) || []);
-        }
-        if (requestsRes.status === 'fulfilled') {
-          setPendingRequests(requestsRes.value.data.data || []);
-        }
-        if (blockchainRes.status === 'fulfilled') {
-          setBlockchainStatus(blockchainRes.value.data.data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+        const response = await axios.get('/api/blockchain/status');
+        return response.data;
+      } catch (error) {
+        // Return fallback data when blockchain is unavailable
+        return {
+          success: false,
+          data: {
+            connected: false,
+            network: 'offline',
+          }
+        };
       }
-    };
+    },
+    { cacheKey: 'blockchain-status', ttl: 10 * 1000 } // 10 seconds cache
+  );
 
-    fetchData();
-  }, []);
+  // Combine loading states
+  const isLoading = statsLoading || reportsLoading || isGlobalLoading;
+
+  // Update store and local state when data changes
+  useEffect(() => {
+    if (statsData) {
+      const combinedStats = {
+        total_documents: statsData.stats?.totalDocuments || 0,
+        total_graduates: statsData.stats?.totalGraduates || 0,
+        pending_requests: statsData.stats?.pendingTransfers || 0,
+        total_verifications: statsData.stats?.verifiedDocuments || 0,
+        documents_today: reportsData?.data?.summary?.total_documents || 0,
+        revenue_this_month: reportsData?.data?.summary?.total_revenue || 0,
+      };
+      setDashboardStats(combinedStats);
+    }
+    
+    if (reportsData?.data) {
+      setRecentDocs(reportsData.data.documents?.slice(0, 5) || []);
+    }
+    
+    if (transfersData?.data) {
+      setPendingRequests(transfersData.data);
+    }
+  }, [statsData, reportsData, transfersData, setDashboardStats]);
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setGlobalLoading(true);
+    try {
+      await Promise.all([
+        refetchStats(),
+        // Other refetch functions can be added here
+      ]);
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  const stats = useAppStore(state => state.dashboardStats);
+  const blockchainStatus = blockchainData?.data;
 
   const statCards = [
     { label: 'Total Documents', value: stats?.total_documents || 0, icon: '📄', color: 'blue' },
@@ -104,7 +145,7 @@ export default function RegistrarDashboard() {
           <p className="text-white/50 text-sm">Registrar overview and quick actions</p>
         </div>
         <div className="flex items-center gap-3">
-          {blockchainStatus !== null && (
+          {blockchainStatus && (
             <Badge
               className={
                 blockchainStatus.connected
@@ -115,6 +156,15 @@ export default function RegistrarDashboard() {
               {blockchainStatus.connected ? '⛓️ Blockchain Connected' : '⛓️ Blockchain Offline'}
             </Badge>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="border-white/20 text-white hover:bg-white/10"
+          >
+            {isLoading ? '🔄 Refreshing...' : '🔄 Refresh'}
+          </Button>
           <Link href="/registrar/upload">
             <Button className="bg-blue-600 hover:bg-blue-700">
               📤 Upload Document

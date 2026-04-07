@@ -29,80 +29,91 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
-    // Get total graduates count
-    const { count: totalGraduates } = await supabaseAdmin
-      .from("graduates")
-      .select("*", { count: "exact", head: true })
-
-    // Get total documents count
-    const { count: totalDocuments } = await supabaseAdmin
-      .from("documents")
-      .select("*", { count: "exact", head: true })
-
-    // Get pending transfers count
-    const { count: pendingTransfers } = await supabaseAdmin
-      .from("transfer_requests")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending")
-
-    // Get blockchain verified documents count
-    const { count: verifiedDocuments } = await supabaseAdmin
-      .from("documents")
-      .select("*", { count: "exact", head: true })
-      .not("blockchain_tx_hash", "is", null)
-
-    // Get recent activities
-    const { data: recentActivities } = await supabaseAdmin
-      .from("audit_logs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(10)
-
-    // Get recent graduates
-    const { data: recentGraduates } = await supabaseAdmin
-      .from("graduates")
-      .select(`
-        id, 
-        student_id, 
-        graduation_year, 
-        department,
-        created_at,
-        user:users(full_name)
-      `)
-      .order("created_at", { ascending: false })
-      .limit(5)
-
-    // Get pending transfer requests
-    const { data: pendingRequests } = await supabaseAdmin
-      .from("transfer_requests")
-      .select(`
-        *,
-        graduate:graduates(
-          id,
-          student_id,
+    // Use Promise.all to run queries in parallel instead of sequentially
+    const [
+      totalGraduatesResult,
+      totalDocumentsResult,
+      pendingTransfersResult,
+      verifiedDocumentsResult,
+      recentActivitiesResult,
+      recentGraduatesResult,
+      pendingRequestsResult
+    ] = await Promise.all([
+      // Get total graduates count
+      supabaseAdmin
+        .from("graduates")
+        .select("*", { count: "exact", head: true }),
+      
+      // Get total documents count
+      supabaseAdmin
+        .from("documents")
+        .select("*", { count: "exact", head: true }),
+      
+      // Get pending transfers count
+      supabaseAdmin
+        .from("transfer_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending"),
+      
+      // Get blockchain verified documents count
+      supabaseAdmin
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .not("blockchain_tx_hash", "is", null),
+      
+      // Get recent activities
+      supabaseAdmin
+        .from("audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10),
+      
+      // Get recent graduates
+      supabaseAdmin
+        .from("graduates")
+        .select(`
+          id, 
+          student_id, 
+          graduation_year, 
+          department,
+          created_at,
           user:users(full_name)
-        ),
-        document:documents(
-          id,
-          document_type,
-          file_name
-        )
-      `)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(5)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      
+      // Get pending transfer requests
+      supabaseAdmin
+        .from("transfer_requests")
+        .select(`
+          *,
+          graduate:graduates(
+            id,
+            student_id,
+            user:users(full_name)
+          ),
+          document:documents(
+            id,
+            document_type,
+            file_name
+          )
+        `)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5)
+    ])
 
     return NextResponse.json({
       success: true,
       stats: {
-        totalGraduates: totalGraduates || 0,
-        totalDocuments: totalDocuments || 0,
-        pendingTransfers: pendingTransfers || 0,
-        verifiedDocuments: verifiedDocuments || 0,
+        totalGraduates: totalGraduatesResult.count || 0,
+        totalDocuments: totalDocumentsResult.count || 0,
+        pendingTransfers: pendingTransfersResult.count || 0,
+        verifiedDocuments: verifiedDocumentsResult.count || 0,
       },
-      recentActivities: recentActivities || [],
-      recentGraduates: recentGraduates || [],
-      pendingRequests: pendingRequests || [],
+      recentActivities: recentActivitiesResult.data || [],
+      recentGraduates: recentGraduatesResult.data || [],
+      pendingRequests: pendingRequestsResult.data || [],
     })
   } catch (error) {
     console.error("Error in registrar stats API:", error)

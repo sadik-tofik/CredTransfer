@@ -7,6 +7,8 @@ A blockchain-powered academic credential verification system for Jimma Universit
 ## 🚀 Features
 
 - **Blockchain Security**: Immutable document hashes stored on Ethereum
+- **Secure Document Transfer**: Share documents with institutions using verification codes
+- **Instant Document Download**: Receiving institutions can download verified documents
 - **Multi-Role Access**: Separate portals for Registrars, Graduates, and Verifiers
 - **Instant Verification**: QR code and hash-based verification in under 2 seconds
 - **Secure Document Storage**: Encrypted file storage with Supabase
@@ -43,7 +45,9 @@ CredTransfer revolutionizes academic credential verification by leveraging block
 1. **Document Upload**: Registrars upload PDFs/transcripts, system computes SHA-256 hash
 2. **Blockchain Storage**: Hash is permanently stored on Ethereum blockchain
 3. **Graduate Request**: Graduates pay 500 ETB service fee for transfer requests
-4. **Verification**: Institutions scan QR code or enter hash code for instant verification
+4. **Email Notification**: Receiving institution gets verification code and QR code
+5. **Document Verification**: Institutions scan QR code or enter hash code for instant verification
+6. **Secure Download**: Verified institutions can download the actual document file
 
 ## 🏗️ Architecture
 
@@ -250,6 +254,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - `GET /api/transfers/pending` - Get pending transfers
 - `POST /api/transfers/request` - Create transfer request
 - `GET /api/transfers/[id]` - Get transfer details
+
+### Document Download
+
+- `GET /api/download/[code]` - Download verified document by verification code
 
 ### Payments
 

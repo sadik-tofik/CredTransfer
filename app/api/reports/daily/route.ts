@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { apiCache } from '@/lib/api-cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +33,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const start_date = searchParams.get('start_date') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const end_date = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
+    
+    // Create cache key
+    const cacheKey = `reports-daily-${start_date}-${end_date}`;
+    
+    // Check cache first
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData) {
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
 
     const [documents, transfers, payments, verifications] = await Promise.all([
       supabaseAdmin
@@ -64,22 +78,28 @@ export async function GET(request: NextRequest) {
 
     const totalRevenue = payments.data?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
+    const responseData = {
+      period: { start_date, end_date },
+      summary: {
+        total_documents: documents.data?.length || 0,
+        total_transfers: transfers.data?.length || 0,
+        total_revenue: totalRevenue,
+        total_verifications: verifications.data?.length || 0,
+        successful_verifications: verifications.data?.filter((v) => v.result === 'verified').length || 0,
+      },
+      documents: documents.data || [],
+      transfers: transfers.data || [],
+      payments: payments.data || [],
+      verifications: verifications.data || [],
+    };
+    
+    // Cache the response for 5 minutes
+    apiCache.set(cacheKey, responseData, 5 * 60 * 1000);
+
     return NextResponse.json({
       success: true,
-      data: {
-        period: { start_date, end_date },
-        summary: {
-          total_documents: documents.data?.length || 0,
-          total_transfers: transfers.data?.length || 0,
-          total_revenue: totalRevenue,
-          total_verifications: verifications.data?.length || 0,
-          successful_verifications: verifications.data?.filter((v) => v.result === 'verified').length || 0,
-        },
-        documents: documents.data || [],
-        transfers: transfers.data || [],
-        payments: payments.data || [],
-        verifications: verifications.data || [],
-      },
+      data: responseData,
+      cached: false
     });
   } catch (error) {
     console.error('Reports error:', error);

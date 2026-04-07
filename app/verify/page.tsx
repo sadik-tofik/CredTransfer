@@ -264,12 +264,45 @@ export default function VerifyPage() {
                 </>
               )}
 
+              {/* Download Document */}
+              {(result as { transfer?: { recipient_institution: string; expires_at: string } }).transfer && (
+                <>
+                  <Separator className="bg-white/10 my-6" />
+                  <div>
+                    <h3 className="text-white font-semibold mb-4">Download Document</h3>
+                    <div className="space-y-3">
+                      <p className="text-white/60 text-sm">
+                        This document has been securely shared with your institution. You can download a verified copy below.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          const downloadUrl = `/api/download/${encodeURIComponent(code)}`;
+                          const link = document.createElement('a');
+                          link.href = downloadUrl;
+                          link.download = (result as any).document?.file_name || 'document.pdf';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          toast.success('Download started');
+                        }}
+                        className="bg-green-600 hover:bg-green-700 w-full"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download Verified Document
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Transfer Info */}
               {(result as { transfer?: { recipient_institution: string; expires_at: string } }).transfer && (
                 <>
                   <Separator className="bg-white/10 my-6" />
                   <div>
-                    <h3 className="text-white font-semibold mb-4">📤 Transfer Details</h3>
+                    <h3 className="text-white font-semibold mb-4">Transfer Details</h3>
                     <div className="space-y-3">
                       <InfoRow
                         label="Shared With"

@@ -64,7 +64,7 @@ export async function GET(
 
       if (!transferError && transferData) {
         transfer = transferData;
-        document = transferData.document as {
+        document = transferData.document as unknown as {
           id: string;
           document_type: string;
           file_name: string;
@@ -79,7 +79,9 @@ export async function GET(
             student_id: string;
             graduation_year: number;
             department: string;
-            user: { full_name: string };
+            user: {
+              full_name: string;
+            };
           };
         };
         graduate = document?.graduate;
@@ -115,7 +117,7 @@ export async function GET(
 
       if (!docError && docData) {
         document = docData;
-        graduate = docData.graduate as {
+        graduate = docData.graduate as unknown as {
           id: string;
           student_id: string;
           graduation_year: number;
@@ -155,7 +157,7 @@ export async function GET(
 
       if (docData) {
         document = docData;
-        graduate = docData.graduate as {
+        graduate = docData.graduate as unknown as {
           id: string;
           student_id: string;
           graduation_year: number;

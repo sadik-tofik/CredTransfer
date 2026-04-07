@@ -114,7 +114,7 @@ export default function GraduateProfilePage() {
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="w-24 h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
-              {user?.user_metadata?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'GR'}
+              {user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'GR'}
             </div>
             <div className="text-center sm:text-left">
               <h2 className="text-white text-2xl font-bold">{user?.user_metadata?.full_name}</h2>

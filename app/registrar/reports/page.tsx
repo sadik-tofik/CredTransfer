@@ -56,7 +56,7 @@ export default function RegistrarReportsPage() {
           <p className="text-white/50 text-sm">View system statistics and generate reports</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={period} onValueChange={setPeriod}>
+          <Select value={period} onValueChange={(value) => setPeriod(value || 'month')}>
             <SelectTrigger className="w-[150px] bg-white/10 border-white/20 text-white">
               <SelectValue />
             </SelectTrigger>

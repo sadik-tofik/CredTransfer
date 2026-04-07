@@ -185,7 +185,7 @@ export default function RegistrarLayout({
         {/* Mobile Header */}
         <header className="lg:hidden h-14 border-b border-white/10 flex items-center px-4 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
           <Sheet>
-            <SheetTrigger asChild>
+            <SheetTrigger>
               <Button
                 variant="ghost"
                 size="icon"

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validation = confirmSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ success: false, error: validation.error.issues[0].message }, { status: 400 });
     }
 
     const { payment_id, transaction_reference } = validation.data;

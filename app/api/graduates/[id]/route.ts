@@ -85,7 +85,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
     const validation = updateSchema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json({ success: false, error: validation.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ success: false, error: validation.error.issues[0].message }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin

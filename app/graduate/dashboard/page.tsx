@@ -179,7 +179,7 @@ export default function GraduateDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                  {user?.user_metadata?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'GR'}
+                  {user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'GR'}
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-lg">{user?.user_metadata?.full_name}</h3>

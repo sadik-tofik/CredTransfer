@@ -3,19 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateHashCode, generateQRCodeData } from '@/lib/crypto';
 import { transferRequestSchema } from '@/lib/validations';
+import { sendTransferShareEmail } from '@/lib/email';
 
 // POST: Create transfer request
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    console.log('=== API REQUEST DEBUG ===');
-    console.log('Raw request body:', body);
-    console.log('Body type:', typeof body);
-    console.log('Body keys:', Object.keys(body));
-    console.log('recipient_institution value:', body.recipient_institution);
-    console.log('recipient_institution type:', typeof body.recipient_institution);
-    console.log('========================');
     
     // Defensive: ensure body is an object
     if (!body || typeof body !== 'object') {
@@ -30,15 +23,16 @@ export async function POST(request: NextRequest) {
       document_id: typeof body.document_id === 'string' ? body.document_id.trim() : '',
       recipient_institution: typeof body.recipient_institution === 'string' ? body.recipient_institution.trim() : '',
       recipient_email: typeof body.recipient_email === 'string' ? body.recipient_email.trim() : '',
+      university_email: typeof body.university_email === 'string' ? body.university_email.trim() : '',
       payment_method: body.payment_method
     };
     
-    console.log('Sanitized body:', sanitizedBody);
-    
     // Validate first before checking auth
     const validation = transferRequestSchema.safeParse(sanitizedBody);
+    
+    // Extract variables for use
+    const { document_id, recipient_institution, recipient_email, university_email, payment_method } = sanitizedBody;
     if (!validation.success) {
-      console.log('Validation failed:', validation.error.issues);
       return NextResponse.json({ 
         success: false, 
         error: validation.error.issues[0].message,
@@ -54,38 +48,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user role
-    const { data: userData } = await supabaseAdmin
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
+    if (userError) {
+      return NextResponse.json({ success: false, error: 'Failed to verify user role' }, { status: 500 });
+    }
+
     if (userData?.role !== 'graduate') {
       return NextResponse.json({ success: false, error: 'Only graduates can request transfers' }, { status: 403 });
     }
 
-    const { document_id, recipient_institution, recipient_email, payment_method } = validation.data;
-
     // Get graduate profile
-    const { data: graduate } = await supabaseAdmin
+    const { data: graduate, error: graduateError } = await supabaseAdmin
       .from('graduates')
       .select('id, fee_cleared, student_id')
       .eq('user_id', user.id)
       .single();
 
-    if (!graduate) {
+    if (graduateError) {
       return NextResponse.json({ success: false, error: 'Graduate profile not found' }, { status: 404 });
     }
 
     // Get document and verify ownership
-    const { data: document } = await supabaseAdmin
+    const { data: document, error: documentError } = await supabaseAdmin
       .from('documents')
       .select('id, document_type, file_hash, status')
       .eq('id', document_id)
       .eq('graduate_id', graduate.id)
       .single();
 
-    if (!document) {
+    if (documentError || !document) {
       return NextResponse.json({ success: false, error: 'Document not found or not owned by you' }, { status: 404 });
     }
 
@@ -117,7 +113,13 @@ export async function POST(request: NextRequest) {
     // Generate hash code and QR code
     const hashCode = generateHashCode();
     const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?code=${hashCode}`;
-    const qrCodeDataUrl = await generateQRCodeData(verifyUrl);
+    
+    let qrCodeDataUrl;
+    try {
+      qrCodeDataUrl = await generateQRCodeData(verifyUrl);
+    } catch (qrError) {
+      return NextResponse.json({ success: false, error: 'Failed to generate QR code' }, { status: 500 });
+    }
 
     // Create transfer request
     const { data: transferRequest, error: transferError } = await supabaseAdmin
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
         document_id,
         recipient_institution,
         recipient_email: recipient_email || null,
+        university_email: university_email,
         payment_status: requiresPayment ? 'pending' : 'waived',
         payment_id: payment.id,
         qr_code: qrCodeDataUrl,
@@ -147,6 +150,38 @@ export async function POST(request: NextRequest) {
       action: 'create_transfer_request',
       details: { document_id, recipient_institution, payment_id: payment.id },
     });
+
+    // Send email to recipient if provided
+    if (recipient_email) {
+      try {
+        await sendTransferShareEmail(
+          recipient_email,
+          recipient_institution,
+          'Salim Aman', // TODO: Get from graduate profile
+          document.document_type,
+          hashCode,
+          qrCodeDataUrl
+        );
+      } catch (emailError) {
+        // Don't fail the request if email fails, but log it
+        console.error('Failed to send recipient email:', emailError);
+      }
+    }
+
+    // Send email to university email
+    try {
+      await sendTransferShareEmail(
+        university_email,
+        recipient_institution,
+        'Salim Aman', // TODO: Get from graduate profile
+        document.document_type,
+        hashCode,
+        qrCodeDataUrl
+      );
+    } catch (emailError) {
+      // Don't fail the request if email fails, but log it
+      console.error('Failed to send university email:', emailError);
+    }
 
     return NextResponse.json({
       success: true,

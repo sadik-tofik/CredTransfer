@@ -258,6 +258,7 @@ export interface RegistrarStats {
 export interface GraduateStats {
   total_documents: number;
   active_transfers: number;
+  completed_transfers: number;
   total_verifications: number;
   payment_history: Payment[];
 }

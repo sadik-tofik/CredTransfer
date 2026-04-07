@@ -68,8 +68,8 @@ function Sidebar({ user, mobile = false, onClose }: { user: User | null; mobile?
           CT
         </div>
         <div>
-          <h1 className="text-white font-bold">CredTransfer</h1>
-          <p className="text-green-300 text-xs">Graduate Portal</p>
+          <h1 className="text-white font-bold text-lg">CredTransfer</h1>
+          <p className="text-green-300 text-sm">Graduate Portal</p>
         </div>
       </div>
 
@@ -170,14 +170,14 @@ export default function GraduateLayout({ children }: { children: React.ReactNode
         <header className="h-16 border-b border-white/10 flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <Sheet>
-              <SheetTrigger asChild>
+              <SheetTrigger>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="lg:hidden text-white"
                   onClick={() => setMobileOpen(true)}
                 >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </Button>
@@ -194,7 +194,7 @@ export default function GraduateLayout({ children }: { children: React.ReactNode
             </Link>
 
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-green-600 text-white text-xs">
@@ -211,7 +211,7 @@ export default function GraduateLayout({ children }: { children: React.ReactNode
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem>
                   <Link href="/graduate/profile">Profile Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
