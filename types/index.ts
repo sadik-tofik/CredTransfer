@@ -2,19 +2,33 @@
 // CREDTRANSFER - Core Type Definitions
 // ============================================================
 
-export type UserRole = 'graduate' | 'registrar' | 'admin';
+export type UserRole = "graduate" | "registrar" | "admin";
 
-export type DocumentType = 'diploma' | 'transcript' | 'fee_clearance' | 'other';
+export type DocumentType = "diploma" | "transcript" | "fee_clearance" | "other";
 
-export type DocumentStatus = 'active' | 'revoked' | 'pending' | 'expired';
+export type DocumentStatus = "active" | "revoked" | "pending" | "expired";
 
-export type TransferStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'completed';
+export type TransferStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "expired"
+  | "completed";
 
-export type PaymentMethod = 'telebirr' | 'bank_transfer' | 'cbe_birr';
+export type PaymentMethod = "telebirr" | "bank_transfer" | "cbe_birr";
 
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
+export type PaymentStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "refunded";
 
-export type VerificationResult = 'verified' | 'invalid' | 'suspicious' | 'revoked';
+export type VerificationResult =
+  | "verified"
+  | "invalid"
+  | "suspicious"
+  | "revoked";
 
 // ============================================================
 // USER TYPES
@@ -119,6 +133,10 @@ export interface Payment {
   status: PaymentStatus;
   paid_at?: string;
   receipt_url?: string;
+  payment_screenshot_url?: string;
+  screenshot_uploaded_at?: string;
+  verified_by?: string;
+  verified_at?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
   graduate?: Graduate & { user: User };
