@@ -140,37 +140,136 @@ export async function sendTransferShareEmail(
   qrCodeUrl: string
 ): Promise<void> {
   const verifyUrl = `${APP_URL}/verify?code=${hashCode}`;
+  const docLabel  = documentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-ET', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+
   const content = `
-    <h2>Academic Document Verification</h2>
-    <p>Dear ${recipientInstitution},</p>
-    <p>${graduateName} has shared an academic document with you through the ${UNIVERSITY} ${APP_NAME} system.</p>
-    <div class="info-box">
-      <p><strong>Document Type:</strong> ${documentType.replace('_', ' ').toUpperCase()}</p>
-      <p><strong>Graduate Name:</strong> ${graduateName}</p>
-      <p><strong>Verification Code:</strong></p>
-      <p style="text-align:center"><span class="code">${hashCode}</span></p>
+    <h2 style="color:#1a1a2e; font-size:22px; margin-bottom:8px;">Academic Credential Verification Request</h2>
+    <p style="color:#555; font-size:15px;">Dear Admissions Office — <strong>${recipientInstitution}</strong>,</p>
+    <p style="color:#555; font-size:15px; line-height:1.6;">
+      <strong>${graduateName}</strong> has authorized the secure transfer of their academic credential
+      to your institution through the <strong>${UNIVERSITY} ${APP_NAME}</strong> system.
+      This transfer has been reviewed and approved by the ${UNIVERSITY} Registrar's Office.
+    </p>
+
+    <div style="background:#f0f7ff; border-left:4px solid #0f3460; padding:20px 24px; margin:24px 0; border-radius:4px;">
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="color:#888; font-size:13px; padding:4px 0; width:140px;">Graduate Name</td>
+          <td style="color:#1a1a2e; font-size:14px; font-weight:600; padding:4px 0;">${graduateName}</td>
+        </tr>
+        <tr>
+          <td style="color:#888; font-size:13px; padding:4px 0;">Document Type</td>
+          <td style="color:#1a1a2e; font-size:14px; font-weight:600; padding:4px 0;">${docLabel}</td>
+        </tr>
+        <tr>
+          <td style="color:#888; font-size:13px; padding:4px 0;">Issuing Institution</td>
+          <td style="color:#1a1a2e; font-size:14px; font-weight:600; padding:4px 0;">${UNIVERSITY}</td>
+        </tr>
+        <tr>
+          <td style="color:#888; font-size:13px; padding:4px 0;">Valid Until</td>
+          <td style="color:#1a1a2e; font-size:14px; font-weight:600; padding:4px 0;">${expiryDate}</td>
+        </tr>
+      </table>
     </div>
-    <p>To verify this document, you can:</p>
-    <ol>
-      <li>Visit <a href="${verifyUrl}">${APP_URL}/verify</a> and enter the code above</li>
-      <li>Or scan the QR code below</li>
-    </ol>
-    ${qrCodeUrl ? `<div style="text-align:center"><img src="${qrCodeUrl}" alt="Verification QR Code" style="max-width:200px"/></div>` : ''}
-    <div style="text-align: center;">
-      <a href="${verifyUrl}" class="btn">Verify Document Now</a>
+
+    <p style="color:#333; font-size:14px; font-weight:600; margin-bottom:8px;">Verification Code:</p>
+    <div style="text-align:center; margin:16px 0;">
+      <span style="font-family:monospace; font-size:28px; font-weight:700; letter-spacing:6px;
+                   background:#f8f9fa; border:2px solid #dee2e6; padding:12px 24px;
+                   border-radius:8px; color:#0f3460; display:inline-block;">
+        ${hashCode}
+      </span>
     </div>
-    <div class="info-box">
-      <strong>Important:</strong> After verification, you will be able to download a verified copy of the document for your records.
+
+    ${qrCodeUrl ? `
+    <div style="text-align:center; margin:24px 0;">
+      <p style="color:#555; font-size:13px; margin-bottom:12px;">Or scan this QR code to verify instantly:</p>
+      <div style="display:inline-block; padding:12px; background:white; border:2px solid #dee2e6; border-radius:8px;">
+        <img src="${qrCodeUrl}" alt="Verification QR Code" style="width:180px; height:180px; display:block;" />
+      </div>
+    </div>` : ''}
+
+    <div style="text-align:center; margin:28px 0;">
+      <a href="${verifyUrl}"
+         style="display:inline-block; background:#0f3460; color:white; padding:14px 36px;
+                text-decoration:none; border-radius:8px; font-weight:700; font-size:15px;
+                letter-spacing:0.5px;">
+        Verify &amp; Download Document
+      </a>
     </div>
-    <div class="info-box">
-      <strong>Note:</strong> This document is secured by blockchain technology.
-      The verification confirms the document was issued by ${UNIVERSITY} and has not been tampered with.
+
+    <div style="background:#fff3cd; border-left:4px solid #ffc107; padding:14px 18px; margin:20px 0; border-radius:4px;">
+      <strong style="color:#856404;">How to verify:</strong>
+      <ol style="color:#856404; margin:8px 0 0 0; padding-left:18px; font-size:13px; line-height:1.8;">
+        <li>Click the button above, or visit <a href="${APP_URL}/verify" style="color:#0f3460;">${APP_URL}/verify</a></li>
+        <li>Enter the verification code shown above, or scan the QR code</li>
+        <li>View the graduate's details and download the verified document</li>
+      </ol>
+    </div>
+
+    <div style="background:#d4edda; border-left:4px solid #28a745; padding:14px 18px; border-radius:4px;">
+      <strong style="color:#155724;">⛓️ Blockchain-Secured:</strong>
+      <span style="color:#155724; font-size:13px;">
+        This document's authenticity is cryptographically verified on the Ethereum blockchain.
+        The verification link confirms the document was officially issued by ${UNIVERSITY}
+        and has not been altered in any way.
+      </span>
     </div>`;
 
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+    from: `${UNIVERSITY} CredTransfer <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
     to: recipientEmail,
-    subject: `Academic Document from ${graduateName} - ${APP_NAME}`,
+    subject: `[CredTransfer] Academic Document — ${graduateName} | ${docLabel}`,
+    html: getEmailWrapper(content),
+  });
+}
+
+// Send notification to graduate when their transfer is approved
+export async function sendTransferApprovedEmail(
+  graduateEmail: string,
+  graduateName: string,
+  recipientInstitution: string,
+  documentType: string,
+  hashCode: string,
+  qrCodeUrl: string
+): Promise<void> {
+  const verifyUrl = `${APP_URL}/verify?code=${hashCode}`;
+  const docLabel  = documentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const content = `
+    <h2>Your Transfer Request Has Been Approved ✅</h2>
+    <p>Dear ${graduateName},</p>
+    <p>
+      The ${UNIVERSITY} Registrar's Office has reviewed and <strong>approved</strong> your
+      document transfer request to <strong>${recipientInstitution}</strong>.
+    </p>
+    <div class="info-box">
+      <p><strong>Document:</strong> ${docLabel}</p>
+      <p><strong>Sent To:</strong> ${recipientInstitution}</p>
+      <p><strong>Your Verification Code:</strong></p>
+      <p style="text-align:center"><span class="code">${hashCode}</span></p>
+    </div>
+    <p>
+      The receiving institution has been notified by email with the verification QR code
+      and a direct link to download your document.
+    </p>
+    <p>You can also share this verification link directly:</p>
+    <div style="text-align:center; margin:20px 0;">
+      <a href="${verifyUrl}" class="btn">View Verification Page</a>
+    </div>
+    <div class="info-box">
+      <strong>Keep your verification code safe.</strong>
+      You can use it at any time to check the status of your document
+      or share it with additional institutions.
+    </div>`;
+
+  await transporter.sendMail({
+    from: `${UNIVERSITY} CredTransfer <${process.env.EMAIL_FROM || process.env.SMTP_USER}>`,
+    to: graduateEmail,
+    subject: `Transfer Approved — Your ${docLabel} has been sent to ${recipientInstitution}`,
     html: getEmailWrapper(content),
   });
 }

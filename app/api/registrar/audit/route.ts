@@ -16,38 +16,25 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const userRole = userData?.role || user.user_metadata?.role;
-    if (!userRole || !['registrar', 'admin'].includes(userRole)) {
+    if (!userData || !['registrar', 'admin'].includes(userData.role)) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'pending';
-    const page   = parseInt(searchParams.get('page')  || '1');
-    const limit  = parseInt(searchParams.get('limit') || '50');
+    const page   = parseInt(searchParams.get('page')   || '1');
+    const limit  = parseInt(searchParams.get('limit')  || '30');
+    const action = searchParams.get('action') || '';
     const offset = (page - 1) * limit;
 
-    // Build query — include screenshot url and university_email
     let query = supabaseAdmin
-      .from('transfer_requests')
+      .from('audit_logs')
       .select(`
-        id, status, payment_status, payment_id,
-        recipient_institution, recipient_email, university_email,
-        hash_code, qr_code, created_at, expires_at, rejection_reason,
-        graduate:graduates(
-          id, student_id, graduation_year, department,
-          user:users(full_name, email, phone)
-        ),
-        document:documents(id, document_type, file_name, status, blockchain_tx_hash),
-        payment:payments(
-          id, amount, status, payment_method, transaction_reference,
-          payment_screenshot_url, screenshot_uploaded_at
-        )
+        id, action, details, ip_address, timestamp, created_at,
+        user:users(full_name, email, role)
       `, { count: 'exact' });
 
-    // Status filter
-    if (status && status !== '') {
-      query = query.eq('status', status);
+    if (action) {
+      query = query.eq('action', action);
     }
 
     const { data, error, count } = await query
@@ -55,7 +42,6 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Pending transfers query error:', error);
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
@@ -67,9 +53,8 @@ export async function GET(request: NextRequest) {
       limit,
       totalPages: Math.ceil((count || 0) / limit),
     });
-
-  } catch (error) {
-    console.error('Pending transfers list error:', error);
+  } catch (err) {
+    console.error('Audit log error:', err);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
