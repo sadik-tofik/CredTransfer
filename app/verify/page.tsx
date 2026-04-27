@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { formatDate, formatDateTime, getEtherscanLink, truncateHash, getDocumentTypeLabel } from '@/lib/utils';
 import type { VerificationResult_Full } from '@/types';
 
-export default function VerifyPage() {
+function VerifyPageContent() {
   const searchParams = useSearchParams();
   const [code, setCode] = useState(searchParams.get('code') || searchParams.get('hash') || '');
   const [institution, setInstitution] = useState('');
@@ -353,6 +353,18 @@ export default function VerifyPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <VerifyPageContent />
+    </Suspense>
   );
 }
 

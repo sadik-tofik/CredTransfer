@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { access_code, university_email, verification_code } = accessRequestSchema.parse(body);
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Verify the transfer exists and is approved
     const { data: transfer, error: transferError } = await supabase

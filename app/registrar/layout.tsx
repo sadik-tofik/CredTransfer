@@ -57,6 +57,8 @@ function NavIcon({ name }: { name: string }) {
       </svg>
     ),
   };
+
+  return icons[name] || null;
 }
 
 function Sidebar({ user, onClose }: { user: User | null; onClose?: () => void }) {

@@ -380,7 +380,7 @@ export default function GraduateSharePage() {
               {/* Document selection */}
               <div className="space-y-2">
                 <Label className="text-white/70 text-xs uppercase tracking-wider font-semibold">Select Document *</Label>
-                <Select value={selectedDocId ?? ''} onValueChange={(v) => setValue('document_id', v)}>
+                <Select value={String(selectedDocId ?? '')} onValueChange={(v: string | null) => { if (v !== null) setValue('document_id', v); }}>
                   <SelectTrigger className="bg-white/10 border-white/20 text-white h-11">
                     <SelectValue placeholder="Choose a document to transfer…" />
                   </SelectTrigger>

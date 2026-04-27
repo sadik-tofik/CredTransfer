@@ -28,7 +28,7 @@ export async function GET(
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get the transfer details
     const { data: transfer, error: transferError } = await supabase
