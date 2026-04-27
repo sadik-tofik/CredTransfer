@@ -14,6 +14,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -21,10 +26,16 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build application
         run: pnpm build
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_CONTRACT_ADDRESS: ${{ secrets.NEXT_PUBLIC_CONTRACT_ADDRESS }}
+          NEXT_PUBLIC_ETHEREUM_NETWORK: ${{ secrets.NEXT_PUBLIC_ETHEREUM_NETWORK }}
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25

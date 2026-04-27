@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/payments/screenshot-url?payment_id=xxx
+//
+// Returns the base64 data-URL of the payment screenshot stored in
+// payments.metadata.screenshot_data_url — no Supabase Storage needed.
+// ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -10,7 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only registrars/admins can fetch screenshot URLs
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('role')
@@ -27,32 +32,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'payment_id is required' }, { status: 400 });
     }
 
-    // Get the screenshot path from the payment record
     const { data: payment, error } = await supabaseAdmin
       .from('payments')
-      .select('payment_screenshot_url')
+      .select('metadata, status')
       .eq('id', paymentId)
       .single();
 
-    if (error || !payment?.payment_screenshot_url) {
-      return NextResponse.json({ success: false, error: 'Screenshot not found' }, { status: 404 });
+    if (error || !payment) {
+      return NextResponse.json({ success: false, error: 'Payment not found' }, { status: 404 });
     }
 
-    // Generate a signed URL valid for 1 hour
-    const { data: signedData, error: signError } = await supabaseAdmin.storage
-      .from('payment-screenshots')
-      .createSignedUrl(payment.payment_screenshot_url, 3600);
+    const meta = payment.metadata as Record<string, unknown> | null;
+    const dataUrl = meta?.screenshot_data_url as string | undefined;
 
-    if (signError || !signedData?.signedUrl) {
-      // Bucket may not exist yet — return the path itself for fallback display
-      return NextResponse.json({
-        success: false,
-        error: 'Could not generate signed URL. Ensure payment-screenshots bucket exists in Supabase Storage.',
-        data: { path: payment.payment_screenshot_url }
-      }, { status: 500 });
+    if (!dataUrl) {
+      return NextResponse.json(
+        { success: false, error: 'No screenshot has been uploaded for this payment yet.' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ success: true, data: { url: signedData.signedUrl } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        url:       dataUrl,
+        file_name: (meta?.screenshot_file_name as string) || 'screenshot',
+        file_size: meta?.screenshot_file_size as number | undefined,
+        mime_type: meta?.screenshot_mime_type as string | undefined,
+        uploaded_at: meta?.uploaded_at as string | undefined,
+      },
+    });
 
   } catch (err) {
     console.error('Screenshot URL error:', err);

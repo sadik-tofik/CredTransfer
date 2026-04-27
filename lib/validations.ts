@@ -77,7 +77,7 @@ export const transferRequestSchema = z.object({
   recipient_institution: z.string().min(2, 'Institution name must be at least 2 characters').max(255, 'Institution name is too long'),
   recipient_email: z.string().email('Invalid email address').optional().or(z.literal('')),
   university_email: z.string().email('Valid university email is required'),
-  payment_method: z.enum(['telebirr', 'bank_transfer', 'cbe_birr']).refine((val) => ['telebirr', 'bank_transfer', 'cbe_birr'].includes(val), {
+  payment_method: z.enum(['chapa', 'telebirr', 'bank_transfer', 'cbe_birr']).refine((val) => ['chapa', 'telebirr', 'bank_transfer', 'cbe_birr'].includes(val), {
     message: 'Please select a payment method'
   }),
 }).refine((data) => {
@@ -93,7 +93,7 @@ export const paymentInitiateSchema = z.object({
   document_id: z.string().uuid(),
   recipient_institution: z.string().min(2),
   recipient_email: z.string().email().optional(),
-  payment_method: z.enum(['telebirr', 'bank_transfer', 'cbe_birr']),
+  payment_method: z.enum(['chapa', 'telebirr', 'bank_transfer', 'cbe_birr']),
   amount: z.number().positive(),
 });
 

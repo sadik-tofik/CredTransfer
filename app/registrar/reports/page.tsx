@@ -8,17 +8,73 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 
-interface ReportStats {
-  documents_uploaded: number;
-  transfers_requested: number;
-  transfers_completed: number;
-  verifications_count: number;
-  revenue: number;
-  new_graduates: number;
+interface ReportSummary {
+  total_documents: number;
+  total_transfers: number;
+  total_revenue: number;
+  total_verifications: number;
+  successful_verifications: number;
+}
+
+interface AuditEntry {
+  id: string;
+  action: string;
+  timestamp: string;
+  user?: { full_name: string; role: string };
+}
+
+function periodToDateRange(period: string): { start_date: string; end_date: string } {
+  const now = new Date();
+  const end_date = now.toISOString().split('T')[0];
+  let start = new Date(now);
+
+  if (period === 'today') {
+    // same day
+  } else if (period === 'week') {
+    start.setDate(start.getDate() - 7);
+  } else if (period === 'month') {
+    start.setMonth(start.getMonth() - 1);
+  } else if (period === 'year') {
+    start.setFullYear(start.getFullYear() - 1);
+  }
+
+  return { start_date: start.toISOString().split('T')[0], end_date };
+}
+
+function actionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    upload_document: 'Document uploaded',
+    approve_transfer: 'Transfer approved',
+    reject_transfer: 'Transfer rejected',
+    upload_payment_screenshot: 'Payment screenshot uploaded',
+    chapa_payment_initiated: 'Chapa payment initiated',
+    chapa_payment_completed: 'Chapa payment completed',
+    verify_document: 'Document verified',
+    register_graduate: 'Graduate registered',
+  };
+  return labels[action] || action.replace(/_/g, ' ');
+}
+
+function timeAgo(ts: string): string {
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+
+function actionColor(action: string): string {
+  if (action.includes('upload')) return 'bg-blue-400';
+  if (action.includes('approve')) return 'bg-green-400';
+  if (action.includes('reject')) return 'bg-red-400';
+  if (action.includes('verify')) return 'bg-purple-400';
+  if (action.includes('payment') || action.includes('chapa')) return 'bg-yellow-400';
+  return 'bg-cyan-400';
 }
 
 export default function RegistrarReportsPage() {
-  const [stats, setStats] = useState<ReportStats | null>(null);
+  const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [recentActivity, setRecentActivity] = useState<AuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState('month');
 
@@ -26,8 +82,23 @@ export default function RegistrarReportsPage() {
     const fetchStats = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`/api/reports/daily?period=${period}`);
-        setStats(response.data.data?.dashboard_stats);
+        const { start_date, end_date } = periodToDateRange(period);
+
+        // Fetch report summary
+        const reportRes = await axios.get(
+          `/api/reports/daily?start_date=${start_date}&end_date=${end_date}`
+        );
+        // The API returns: { success, data: { summary: {...}, documents: [...], ... } }
+        const apiData = reportRes.data?.data;
+        if (apiData?.summary) {
+          setSummary(apiData.summary);
+        }
+
+        // Fetch real audit log for activity timeline
+        const auditRes = await axios.get('/api/registrar/audit?page=1&limit=5');
+        if (auditRes.data?.data) {
+          setRecentActivity(auditRes.data.data);
+        }
       } catch (error) {
         console.error('Failed to fetch report data:', error);
       } finally {
@@ -39,12 +110,14 @@ export default function RegistrarReportsPage() {
   }, [period]);
 
   const statCards = [
-    { label: 'Documents Uploaded', value: stats?.documents_uploaded || 0, icon: '📄', change: '+12%' },
-    { label: 'Transfer Requests', value: stats?.transfers_requested || 0, icon: '📤', change: '+8%' },
-    { label: 'Completed Transfers', value: stats?.transfers_completed || 0, icon: '✅', change: '+15%' },
-    { label: 'Verifications', value: stats?.verifications_count || 0, icon: '🔍', change: '+23%' },
-    { label: 'Total Revenue', value: formatCurrency(stats?.revenue || 0), icon: '💰', change: '+18%' },
-    { label: 'New Graduates', value: stats?.new_graduates || 0, icon: '🎓', change: '+5%' },
+    { label: 'Documents Uploaded', value: summary?.total_documents ?? 0, icon: '📄', change: 'this period' },
+    { label: 'Transfer Requests', value: summary?.total_transfers ?? 0, icon: '📤', change: 'this period' },
+    { label: 'Completed Transfers', value: summary?.total_transfers ?? 0, icon: '✅', change: 'this period' },
+    { label: 'Verifications', value: summary?.total_verifications ?? 0, icon: '🔍', change: `${summary?.successful_verifications ?? 0} successful` },
+    { label: 'Total Revenue', value: formatCurrency(summary?.total_revenue ?? 0), icon: '💰', change: 'from payments' },
+    { label: 'Success Rate', value: summary?.total_verifications
+        ? `${Math.round(((summary?.successful_verifications ?? 0) / summary.total_verifications) * 100)}%`
+        : '—', icon: '🎯', change: 'verification success' },
   ];
 
   return (
@@ -85,20 +158,20 @@ export default function RegistrarReportsPage() {
                 <div>
                   <p className="text-white/50 text-sm">{stat.label}</p>
                   {isLoading ? (
-                    <Skeleton className="h-8 w-20 bg-white/10 mt-1" />
+                    <div className="h-8 w-20 bg-white/10 rounded mt-1 animate-pulse" />
                   ) : (
                     <p className="text-white font-bold text-2xl mt-1">{stat.value}</p>
                   )}
                 </div>
                 <div className="text-2xl">{stat.icon}</div>
               </div>
-              <p className="text-green-400 text-xs mt-2">{stat.change} from last period</p>
+              <p className="text-blue-400 text-xs mt-2">{stat.change}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Quick Reports */}
+      {/* Quick Reports + Activity */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="bg-white/5 border-white/10">
           <CardHeader>
@@ -132,29 +205,35 @@ export default function RegistrarReportsPage() {
             <CardDescription className="text-white/60">Recent system activities</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { action: 'Document uploaded', user: 'Registrar', time: '5 min ago', type: 'upload' },
-                { action: 'Transfer approved', user: 'Admin', time: '15 min ago', type: 'approve' },
-                { action: 'New verification', user: 'External', time: '1 hour ago', type: 'verify' },
-                { action: 'Payment confirmed', user: 'System', time: '2 hours ago', type: 'payment' },
-                { action: 'Graduate registered', user: 'Self', time: '3 hours ago', type: 'register' },
-              ].map((activity, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'upload' ? 'bg-blue-400' :
-                    activity.type === 'approve' ? 'bg-green-400' :
-                    activity.type === 'verify' ? 'bg-purple-400' :
-                    activity.type === 'payment' ? 'bg-yellow-400' :
-                    'bg-cyan-400'
-                  }`} />
-                  <div className="flex-1">
-                    <p className="text-white text-sm">{activity.action}</p>
-                    <p className="text-white/40 text-xs">{activity.user} • {activity.time}</p>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full mt-2 bg-white/10 animate-pulse" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-3 bg-white/10 rounded w-3/4 animate-pulse" />
+                      <div className="h-2 bg-white/10 rounded w-1/2 animate-pulse" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <p className="text-white/40 text-sm text-center py-8">No recent activity found</p>
+            ) : (
+              <div className="space-y-4">
+                {recentActivity.map((entry) => (
+                  <div key={entry.id} className="flex items-start gap-3">
+                    <div className={`w-2 h-2 rounded-full mt-2 ${actionColor(entry.action)}`} />
+                    <div className="flex-1">
+                      <p className="text-white text-sm">{actionLabel(entry.action)}</p>
+                      <p className="text-white/40 text-xs">
+                        {entry.user?.full_name || 'System'} • {timeAgo(entry.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

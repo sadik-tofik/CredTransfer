@@ -137,9 +137,11 @@ export async function sendTransferShareEmail(
   graduateName: string,
   documentType: string,
   hashCode: string,
-  qrCodeUrl: string
+  qrCodeUrl: string  // kept for signature compatibility; we use Google Charts below
 ): Promise<void> {
   const verifyUrl = `${APP_URL}/verify?code=${hashCode}`;
+  // Google Charts generates a plain HTTPS QR image — email clients block data: URLs
+  const qrImageUrl = `https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${encodeURIComponent(verifyUrl)}&choe=UTF-8`;
   const docLabel  = documentType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   const expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-ET', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -184,13 +186,12 @@ export async function sendTransferShareEmail(
       </span>
     </div>
 
-    ${qrCodeUrl ? `
     <div style="text-align:center; margin:24px 0;">
       <p style="color:#555; font-size:13px; margin-bottom:12px;">Or scan this QR code to verify instantly:</p>
       <div style="display:inline-block; padding:12px; background:white; border:2px solid #dee2e6; border-radius:8px;">
-        <img src="${qrCodeUrl}" alt="Verification QR Code" style="width:180px; height:180px; display:block;" />
+        <img src="${qrImageUrl}" alt="Verification QR Code" width="180" height="180" style="display:block;" />
       </div>
-    </div>` : ''}
+    </div>
 
     <div style="text-align:center; margin:28px 0;">
       <a href="${verifyUrl}"
@@ -204,7 +205,7 @@ export async function sendTransferShareEmail(
     <div style="background:#fff3cd; border-left:4px solid #ffc107; padding:14px 18px; margin:20px 0; border-radius:4px;">
       <strong style="color:#856404;">How to verify:</strong>
       <ol style="color:#856404; margin:8px 0 0 0; padding-left:18px; font-size:13px; line-height:1.8;">
-        <li>Click the button above, or visit <a href="${APP_URL}/verify" style="color:#0f3460;">${APP_URL}/verify</a></li>
+        <li>Click the button above, or visit <a href="${APP_URL}/verify" style="color:#0f3460;">the verification page</a></li>
         <li>Enter the verification code shown above, or scan the QR code</li>
         <li>View the graduate's details and download the verified document</li>
       </ol>
@@ -213,7 +214,8 @@ export async function sendTransferShareEmail(
     <div style="background:#d4edda; border-left:4px solid #28a745; padding:14px 18px; border-radius:4px;">
       <strong style="color:#155724;">⛓️ Blockchain-Secured:</strong>
       <span style="color:#155724; font-size:13px;">
-        This document's authenticity is cryptographically verified on the Ethereum blockchain.
+        This document's authenticity is cryptographically verified on the
+        <strong>zkSync Era</strong> blockchain (Layer-2 on Ethereum).
         The verification link confirms the document was officially issued by ${UNIVERSITY}
         and has not been altered in any way.
       </span>
@@ -282,7 +284,7 @@ export async function sendDocumentUploadNotification(
   const content = `
     <h2>Document Upload Notification</h2>
     <p>Dear ${name},</p>
-    <p>Your academic document has been successfully uploaded and registered on the blockchain by the ${UNIVERSITY} Registrar's Office.</p>
+    <p>Your academic document has been successfully uploaded and its hash registered on the <strong>zkSync Era</strong> blockchain by the ${UNIVERSITY} Registrar's Office.</p>
     <div class="info-box">
       <p><strong>Document Type:</strong> ${documentType.replace('_', ' ').toUpperCase()}</p>
       <p><strong>Status:</strong> <span class="success-badge">✓ VERIFIED ON BLOCKCHAIN</span></p>

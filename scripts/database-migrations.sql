@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS payments (
     graduate_id UUID REFERENCES graduates(id),
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(10) DEFAULT 'ETB',
-    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('telebirr', 'bank_transfer', 'cbe_birr')),
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('chapa', 'telebirr', 'bank_transfer', 'cbe_birr')),
     transaction_reference VARCHAR(255) UNIQUE,
     status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'refunded')),
     paid_at TIMESTAMP WITH TIME ZONE,

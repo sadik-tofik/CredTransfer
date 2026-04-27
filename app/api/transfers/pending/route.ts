@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const userRole = userData?.role || user.user_metadata?.role;
+    const userRole = userData?.role || (user.user_metadata?.role as string | undefined);
     if (!userRole || !['registrar', 'admin'].includes(userRole)) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     const limit  = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    // Build query — include screenshot url and university_email
+    // Include metadata so the registrar page can show the screenshot inline
+    // without a second API call — the base64 data-URL is inside metadata.
     let query = supabaseAdmin
       .from('transfer_requests')
       .select(`
@@ -40,12 +41,10 @@ export async function GET(request: NextRequest) {
         ),
         document:documents(id, document_type, file_name, status, blockchain_tx_hash),
         payment:payments(
-          id, amount, status, payment_method, transaction_reference,
-          payment_screenshot_url, screenshot_uploaded_at
+          id, amount, status, payment_method, transaction_reference, metadata
         )
       `, { count: 'exact' });
 
-    // Status filter
     if (status && status !== '') {
       query = query.eq('status', status);
     }
@@ -59,9 +58,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
+    // Pull screenshot_data_url out of metadata so the UI can access it cleanly
+    const enriched = (data || []).map((req: Record<string, unknown>) => {
+      const payment = req.payment as Record<string, unknown> | null;
+      const meta    = payment?.metadata as Record<string, unknown> | null;
+      return {
+        ...req,
+        payment: payment ? {
+          ...payment,
+          screenshot_data_url:  meta?.screenshot_data_url  as string | undefined,
+          screenshot_file_name: meta?.screenshot_file_name as string | undefined,
+          screenshot_uploaded_at: meta?.uploaded_at        as string | undefined,
+        } : null,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data,
+      data:       enriched,
       total:      count || 0,
       page,
       limit,

@@ -10,6 +10,16 @@ ALTER TABLE payments
   ADD COLUMN IF NOT EXISTS verified_by UUID REFERENCES users(id),
   ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
 
+-- 1b. Expand payment_method CHECK constraint to include 'chapa'
+-- Drop old constraint and add new one
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_payment_method_check;
+ALTER TABLE payments ADD CONSTRAINT payments_payment_method_check
+  CHECK (payment_method IN ('chapa', 'telebirr', 'bank_transfer', 'cbe_birr'));
+
+-- Also update transfer_requests if it has a payment_method column constraint
+ALTER TABLE transfer_requests DROP CONSTRAINT IF EXISTS transfer_requests_payment_method_check;
+
+
 -- 2. Add university_email to transfer_requests (receiving institution's official email)
 ALTER TABLE transfer_requests
   ADD COLUMN IF NOT EXISTS university_email VARCHAR(255),

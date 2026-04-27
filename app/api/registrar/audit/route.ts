@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action') || '';
     const offset = (page - 1) * limit;
 
+    // Build query — audit_logs uses 'timestamp' column (not 'created_at')
     let query = supabaseAdmin
       .from('audit_logs')
       .select(`
-        id, action, details, ip_address, timestamp, created_at,
+        id, action, details, ip_address, timestamp,
         user:users(full_name, email, role)
       `, { count: 'exact' });
 
@@ -39,15 +40,16 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await query
       .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
+      .order('timestamp', { ascending: false }); // ← fixed: was 'created_at'
 
     if (error) {
+      console.error('Audit log query error:', error);
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      data:       data || [],
       total:      count || 0,
       page,
       limit,
